@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shape Alignment Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pattaya&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: "Pattaya", sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: black;
+            color: white;
+            margin: 0;
+            cursor: none;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: 8rem;
+            text-align: left;
+            margin: 0;
+            color: #FF00FA;
+            padding-left: 50px;
+        }
+
+        h2 {
+            font-size: 2rem;
+            text-align: left;
+            margin: 0;
+            padding-left: 50px;
+        }
+
+        h3 {
+            font-size: 1.2rem;
+            text-align: left;
+            margin: 0;
+            padding-left: 50px; 
+            color: white; 
+            -webkit-text-stroke: 0.1px black; 
+            padding-top: 6px;
+        }
+
+        .score {
+            position: absolute;
+            top: 44px;
+            right: 30px;
+            font-size: 1.5rem;
+            color: #FF00FA;
+        }
+
+        #shape-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            height: 400px;
+            width: 100%;
+            padding-top: 20px;
+        }
+
+        .shape {
+            width: 170px; 
+            height: 170px;
+            margin: 0;
+            position: absolute;
+        }
+
+        .circle {
+            border-radius: 50%;
+        }
+
+        .triangle {
+            width: 0;
+            height: 0;
+            border-left: 85px solid transparent; 
+            border-right: 85px solid transparent;
+            border-bottom: 170px solid; 
+        }
+
+        .square {
+            background-color: inherit;
+        }
+
+        .pentagon {
+            clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+        }
+
+        .star {
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+        }
+
+        .cursor {
+            position: fixed;
+            width: 40px;
+            height: 40px;
+            background-color: white;
+            border-radius: 50%;
+            pointer-events: none;
+            mix-blend-mode: difference;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            transition: transform 0.1s ease;
+        }
+
+        button {
+            padding: 10px 30px;
+            font-size: 1.2em;
+            font-family: "Pattaya", sans-serif;
+            background-color: white;
+            color: black;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 auto;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 10%;
+        }
+
+        button.hidden {
+            display: none;
+        }
+
+        button:hover {
+            background: #FF00FA;
+        }
+
+        .slider-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 30%; 
+            height: 10px;
+            border-radius: 5px;
+            background: #fff;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #FF00FA;
+            cursor: pointer;
+        }
+
+        .round-score {
+            font-size: 2em;
+            text-align: center;
+            color: #FF00FA;
+            padding-top: 120px;
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Designer's Eye</h1>
+    <h2>Adjust the shapes to equal gaps!</h2>
+    <h3>다른 간격을 가진 도형을 조정해봐요! 내 눈의 정확도를 테스트해봐요.</h3>
+    <div class="score">Score: <span id="score">0</span>/50</div>
+    <div id="shape-container"></div>
+    <div class="slider-container">
+        <input id="gap-slider" type="range" min="-50" max="50" step="1" value="0">
+    </div>
+
+    <button id="check-accuracy">Check</button>
+    <div class="round-score" id="round-score"></div>
+    <button id="next-round" class="hidden">Next</button>
+    <div class="cursor" id="cursor"></div>
+
+    <script>
+        const cursor = document.getElementById("cursor");
+        document.addEventListener("mousemove", (e) => {
+            cursor.style.left = `${e.pageX}px`;
+            cursor.style.top = `${e.pageY}px`;
+        });
+
+        const shapesList = ['circle', 'triangle', 'square', 'pentagon', 'star'];
+        const neonColors = ["#FF00FF", "#00FFFF", "#00FF00", "#FFFF00", "#FF4500"];
+        let round = 1;
+        let totalScore = 0;
+        const totalRounds = 5;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const shapeContainer = document.getElementById("shape-container");
+            const slider = document.getElementById("gap-slider");
+            const checkButton = document.getElementById("check-accuracy");
+            const nextRoundButton = document.getElementById("next-round");
+            const scoreDisplay = document.getElementById("score");
+            const roundScoreDisplay = document.getElementById("round-score");
+
+            function randomOffset(min, max) {
+                return Math.floor(Math.random() * (max - min + 1)) + min;
+            }
+
+            function randomColor() {
+                return neonColors[Math.floor(Math.random() * neonColors.length)];
+            }
+
+            function createShapes() {
+                shapeContainer.innerHTML = "";
+                roundScoreDisplay.textContent = "";
+                const baseGap = randomOffset(150, 300);
+                const errorIndex = randomOffset(0, 4);
+                const offset = randomOffset(-50, 50);
+                const selectedShape = shapesList[(round - 1) % shapesList.length];
+                const color = randomColor();
+
+                for (let i = 0; i < 5; i++) {
+                    const shape = document.createElement("div");
+                    shape.classList.add("shape", selectedShape);
+                    shape.style.backgroundColor = color;
+
+                    const position = (i - 2) * baseGap;
+
+                    if (i === errorIndex) {
+                        shape.style.transform = `translateX(${position + offset}px)`;
+                        shape.dataset.correctGap = position;
+                        shape.dataset.error = "true";
+                    } else {
+                        shape.style.transform = `translateX(${position}px)`;
+                    }
+
+                    shape.dataset.index = i;
+                    shapeContainer.appendChild(shape);
+                }
+
+                slider.value = offset;
+                slider.dataset.correctGap = offset;
+            }
+
+            slider.addEventListener("input", () => {
+                const adjustment = parseInt(slider.value, 10);
+                const errorShape = document.querySelector(".shape[data-error='true']");
+                const correctGap = parseInt(errorShape.dataset.correctGap, 10);
+                errorShape.style.transform = `translateX(${correctGap + adjustment}px)`;
+            });
+
+            checkButton.addEventListener("click", () => {
+                const adjustment = parseInt(slider.value, 10);
+                const correctGap = parseInt(slider.dataset.correctGap, 10);
+
+                const error = Math.abs(adjustment - correctGap);
+                const accuracy = Math.max(0, 10 - Math.floor(error / 5));
+
+                totalScore += accuracy;
+                scoreDisplay.textContent = totalScore;
+                roundScoreDisplay.textContent = `You scored ${accuracy}/10 this round!`;
+
+                nextRoundButton.classList.remove("hidden");
+                checkButton.classList.add("hidden");
+            });
+
+            nextRoundButton.addEventListener("click", () => {
+                if (round >= totalRounds) {
+                    roundScoreDisplay.textContent = `Your total score is ${totalScore}/50!`;
+                    nextRoundButton.classList.add("hidden");
+                } else {
+                    round++;
+                    createShapes();
+                    nextRoundButton.classList.add("hidden");
+                    checkButton.classList.remove("hidden");
+                }
+            });
+
+            createShapes();
+        });
+    </script>
+</body>
+</html>
